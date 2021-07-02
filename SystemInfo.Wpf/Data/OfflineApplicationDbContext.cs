@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using SystemInfo.Models.Data;
+using SystemInfo.Models.Domain;
 
 namespace SystemInfo.Wpf.Data {
     public class OfflineApplicationDbContext : ApplicationDbContext {
@@ -15,5 +16,6 @@ namespace SystemInfo.Wpf.Data {
             optionsBuilder.UseSqlite("Data source= Data\\SystemInfoLocalDB.db");
             base.OnConfiguring(optionsBuilder);
         }
+
     }
 }

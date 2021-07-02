@@ -28,7 +28,7 @@ namespace SystemInfo.Repository {
             _db.Enterprises.Update(enterprise);
         }
 
-        public async Task<List<Enterprise>> GetEnterprises() {
+        public async Task<List<Enterprise>> GetEnterprisesAsync() {
             return await _db.Enterprises.ToListAsync();
         }
     }

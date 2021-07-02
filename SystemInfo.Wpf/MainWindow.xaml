@@ -4,9 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SystemInfo.Wpf"
-        xmlns:Requests="clr-namespace:SystemInfo.Shared.Requests;assembly=SystemInfo.Shared" x:Class="SystemInfo.Wpf.MainWindow"
+        xmlns:Requests="clr-namespace:SystemInfo.Shared.Requests;assembly=SystemInfo.Shared"
+        x:Class="SystemInfo.Wpf.MainWindow"
         mc:Ignorable="d"
-        Title="MainWindow" Height="435" Width="620" ResizeMode="CanMinimize">
+        Title="SystemInfo" Height="440" Width="620" ResizeMode="CanMinimize">
     <Window.DataContext>
         <Requests:CreateSystemSpecsRequest/>
     </Window.DataContext>
@@ -15,27 +16,15 @@
             <RowDefinition Height="auto"/>
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Menu Grid.Row="0" Background="{Binding Foreground, ElementName=RentCarText}">
-
+        <Menu Grid.Row="0">
             <MenuItem Header="_Consultas">
-
-                <MenuItem x:Name="ConsultaClientesMenuItem" Header="Consultar _Clientes" />
-                <MenuItem x:Name="ConsultaRentasMenuItem" Header="Consultar _Rentas" />
-                <MenuItem x:Name="ConsultaVehiculoMenuItem" Header="Consultar _Vehiculos"/>
-                <MenuItem x:Name="ConsultaImportadoresMenuItem" Header="Consultar _Importadores" />
-                <MenuItem x:Name="ConsultaPolizaMenuItem" Header="Consultar _Poliza" />
-
+                <MenuItem x:Name="ConsultEnterprisesMenuItem" Header="Consultar _Enterprises" />
+                <MenuItem x:Name="ConsultSystemSpecsMenuItem" Header="Consultar _SystemSpecs" />
             </MenuItem>
-
-            <MenuItem x:Name="OpcionesAdminMenuItem" Header="_Opciones">
-                <MenuItem x:Name="ReportePolizasMenuItem" Header="_Reportar Polizas" />
-                <MenuItem x:Name="ReporteClientesMenuItem" Header="_Reportar Clientes" />
-            </MenuItem>
-
         </Menu>
         <Grid Grid.Row="1">
 
-            <StackPanel HorizontalAlignment="Left" MaxWidth="470" Orientation="Horizontal" VerticalAlignment="Top" Margin="49,19,0,0">
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,20,0,0">
                 <DockPanel LastChildFill="True">
                     <Label  Content="Enterprise name:" FontWeight="Bold" FontSize="14"/>
                     <TextBox x:Name="EnterpriseNameTextBox" HorizontalAlignment="Stretch" MinWidth="100" Width="200" MaxWidth="200" VerticalAlignment="Center" IsEnabled="False" d:Text="Soluciones Almonte Gil" FontSize="14" Text="" TextWrapping="NoWrap"/>
@@ -44,11 +33,11 @@
                     <Label Content="RNC:" FontWeight="Bold" FontSize="14"/>
                     <TextBox x:Name="EnterpriseRncTextBox" IsEnabled="False" MinWidth="50" Width="100" MaxWidth="100" VerticalAlignment="Center"  d:Text="056125469" FontSize="14" Text="{Binding EnterpriseRNC}" TextWrapping="NoWrap"/>
                 </DockPanel>
+                <Button x:Name="EditButton" Content="Edit" Margin="10,0,0,0" HorizontalAlignment="Left" Padding="5" VerticalAlignment="Top" Click="EditButton_Click"/>
             </StackPanel>
 
-            <Button x:Name="EditButton" Content="Edit" HorizontalAlignment="Left" Padding="3" Margin="519,21,0,0" VerticalAlignment="Top" Click="EditButton_Click"/>
 
-            <StackPanel Orientation="Vertical" Margin="25,72,0,18" HorizontalAlignment="Left" Width="auto">
+            <StackPanel Orientation="Vertical" Margin="25,72,0,0" HorizontalAlignment="Left" Width="auto" Height="auto" VerticalAlignment="Top">
                 <StackPanel Orientation="Horizontal">
                     <Label  Content="Machine name:" FontWeight="Bold" FontSize="14" HorizontalContentAlignment="Right" Width="145"/>
                     <TextBox x:Name="machineNameTextbox" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="14" IsReadOnly="True" Text="{Binding MachineName}" d:Text="DESKTOP-HKMAUJO" TextWrapping="Wrap" Width="auto"/>
@@ -81,9 +70,26 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>
+                <DockPanel Margin="0,5,0,5">
+                    <Label x:Name="offLineLabel" Content="Modo off-line" d:Visibility="Visible" Visibility="Visible" FontWeight="Bold" Foreground="#FFF90000"/>
+                    <DockPanel x:Name="pendingChangesPanel" Visibility="Collapsed" d:Visibility="Visible" LastChildFill="False">
+                        <Separator RenderTransformOrigin="0.5,0.5" Width="25" >
+                            <Separator.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform/>
+                                    <SkewTransform/>
+                                    <RotateTransform Angle="90"/>
+                                    <TranslateTransform/>
+                                </TransformGroup>
+                            </Separator.RenderTransform>
+                        </Separator>
+                        <Label Content="There are pending changes!" FontWeight="Bold" Foreground="#FF6A0000"/>
+                        <Button x:Name="syncButton" Padding="5" Content="Sync" Click="syncButton_Click"/>
+                    </DockPanel>
+                </DockPanel>
             </StackPanel>
-            <Button x:Name="saveButton" Content="Save" Padding="5" HorizontalAlignment="Right" Margin="0,0,20,18" VerticalAlignment="Bottom" Click="saveButton_Click"/>
-            <Button x:Name="refreshButton" Content="Refresh" Padding="5" HorizontalAlignment="Right" Margin="0,0,73,18" VerticalAlignment="Bottom" Click="refreshButton_Click"/>
+            <Button x:Name="saveButton" Content="Save" Padding="5" HorizontalAlignment="Right" Margin="0,312,20,0" VerticalAlignment="Top" Click="saveButton_Click"/>
+            <Button x:Name="refreshButton" Content="Refresh" Padding="5" HorizontalAlignment="Right" Margin="0,312,73,0" VerticalAlignment="Top" Click="refreshButton_Click"/>
 
         </Grid>
     </Grid>

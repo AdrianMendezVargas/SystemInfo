@@ -19,11 +19,13 @@ namespace SystemInfo.Models.Data {
 
             modelBuilder.Entity<SystemSpecs>()
                 .HasOne(s => s.Enterprise)
-                .WithMany(e => e.SystemSpecs);
+                .WithMany(e => e.SystemSpecs)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<SystemSpecs>()
                 .HasMany(s => s.WindowsAccounts)
-                .WithOne(w => w.SystemSpecs);
+                .WithOne(w => w.SystemSpecs)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }

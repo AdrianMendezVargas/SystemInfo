@@ -39,6 +39,25 @@ namespace SystemInfo.Api.Controllers {
             }
         }
 
+        [ProducesResponseType(200 , Type = typeof(OperationResponse<EnterpriseDetails>))]
+        [ProducesResponseType(400 , Type = typeof(EmptyOperationResponse))]
+        [HttpGet("{rnc}")]
+        public async Task<IActionResult> Get(string rnc) {
+            var result = await _enterpriseService.GetByRncAsync(rnc);
+            if (result.IsSuccess) {
+                return Ok(new OperationResponse<EnterpriseDetails> {
+                    Message = result.Message ,
+                    IsSuccess = result.IsSuccess ,
+                    Record = result.Record.ToEnterpriseDetails()
+                });
+            } else {
+                return BadRequest(new EmptyOperationResponse {
+                    Message = result.Message ,
+                    IsSuccess = result.IsSuccess ,
+                });
+            }
+        }
+
     }
 
 }

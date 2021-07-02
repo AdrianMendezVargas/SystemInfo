@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SystemInfo.Wpf.Data;
 
 namespace SystemInfo.Wpf.Migrations
 {
     [DbContext(typeof(OfflineApplicationDbContext))]
-    partial class OfflineApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20210630160435_AddOnDeleteCasadeBehavior")]
+    partial class AddOnDeleteCasadeBehavior
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

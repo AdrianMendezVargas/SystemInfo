@@ -47,6 +47,26 @@ namespace SystemInfo.Models.Mappers {
             return systemSpecsDetails;
         }
 
+        public static CreateSystemSpecsRequest ToCreateSystemSpecRequest(this SystemSpecs systemSpecs) {
+
+            var systemSpecsRequest = new CreateSystemSpecsRequest() {
+                EnterpriseRNC = systemSpecs.EnterpriseRNC ,
+                IsOperatingSystem64bits = systemSpecs.IsOperatingSystem64bits ,
+                OperatingSystemVersion = systemSpecs.OperatingSystemVersion ,
+                MachineName = systemSpecs.MachineName ,
+                ProcessorCount = systemSpecs.ProcessorCount ,
+                ProcessorName = systemSpecs.ProcessorName ,
+                TotalMemoryInGigaBytes = systemSpecs.TotalMemoryInGigaBytes ,
+            };
+
+            systemSpecs.WindowsAccounts.ForEach(a => {
+                systemSpecsRequest.WindowsAccounts.Add(a.ToWindowsAccountDetails());
+            });
+
+            return systemSpecsRequest;
+        }
+
+
 
 
     }

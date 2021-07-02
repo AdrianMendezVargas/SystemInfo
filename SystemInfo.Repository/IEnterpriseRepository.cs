@@ -11,6 +11,6 @@ namespace SystemInfo.Repository {
         public Task<Enterprise> FindByRncAsync(string rnc);
         public void Update(Enterprise enterprise);
         public void Remove(Enterprise enterprise);
-        Task<List<Enterprise>> GetEnterprises();
+        Task<List<Enterprise>> GetEnterprisesAsync();
     }
 }

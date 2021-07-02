@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using SystemInfo.Shared.Models;
 
@@ -29,6 +30,10 @@ namespace SystemInfo.Shared.Requests {
         [RegularExpression("^[0-9]{9}$")]
         public string EnterpriseRNC { get; set; }
 
-        public List<WindowsAccountDetails> WindowsAccounts { get; set; }
+        public List<WindowsAccountDetails> WindowsAccounts { get; set; } = new List<WindowsAccountDetails>();
+
+        public virtual bool IsRncValid() {
+            return Regex.IsMatch(EnterpriseRNC , "^[0-9]{9}$");
+        }
     }
 }

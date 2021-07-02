@@ -25,5 +25,12 @@ namespace SystemInfo.Models.Mappers {
             };
         }
 
+        public static CreateEnterpriseRequest ToCreateEntepriseRequest(this Enterprise enterprise) {
+            return new CreateEnterpriseRequest() {
+                RNC = enterprise.RNC ,
+                Name = enterprise.Name ,
+            };
+        }
+
     }
 }

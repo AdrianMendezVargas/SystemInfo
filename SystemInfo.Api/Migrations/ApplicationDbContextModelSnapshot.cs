@@ -103,7 +103,8 @@ namespace SystemInfo.Api.Migrations
                 {
                     b.HasOne("SystemInfo.Models.Domain.Enterprise", "Enterprise")
                         .WithMany("SystemSpecs")
-                        .HasForeignKey("EnterpriseRNC");
+                        .HasForeignKey("EnterpriseRNC")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Enterprise");
                 });

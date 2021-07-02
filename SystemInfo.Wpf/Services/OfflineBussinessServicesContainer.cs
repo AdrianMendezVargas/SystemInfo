@@ -28,7 +28,11 @@ namespace SystemInfo.Wpf.Services {
 
 
         private static IUnitOfWork GetOfflineUnit() {
-            return new EfUnitOfWork(new OfflineApplicationDbContext());
+            return new EfUnitOfWork(GetOfflineDbContext());
+        }
+
+        public static OfflineApplicationDbContext GetOfflineDbContext() {
+            return new OfflineApplicationDbContext();
         }
 
     }

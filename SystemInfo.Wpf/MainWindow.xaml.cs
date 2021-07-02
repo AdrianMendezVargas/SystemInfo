@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualBasic.Devices;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic.Devices;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -6,9 +7,13 @@ using System.Management;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
+using SystemInfo.Models.Mappers;
 using SystemInfo.Services;
+using SystemInfo.Shared.Extensions;
 using SystemInfo.Shared.Models;
 using SystemInfo.Shared.Requests;
+using SystemInfo.Wpf.Data;
 using SystemInfo.Wpf.Services;
 
 namespace SystemInfo.Wpf {
@@ -17,26 +22,69 @@ namespace SystemInfo.Wpf {
     /// </summary>
     public partial class MainWindow : Window {
         public CreateSystemSpecsRequest SystemSpecsRequest { get; set; }
+        public static bool IsServerOnline { get; set; }
+        public bool HasPendingChanges { get; set; }
 
         private bool _isEditingEnterprise;
         private ComputerInfo _computerInfo;
         private SystemSpecsServiceClient _specsClient;
+        private EnterpriseServiceClient _enterpriseClient;
+        private ConnectionServiceClient _connectionClient;
 
         public MainWindow() {
             InitializeComponent();
             SystemSpecsRequest = new CreateSystemSpecsRequest();
             _computerInfo = new ComputerInfo();
             _specsClient = new SystemSpecsServiceClient();
+            _enterpriseClient = new EnterpriseServiceClient();
+            _connectionClient = new ConnectionServiceClient();
 
-            this.DataContext = SystemSpecsRequest;
-            GetSystemSpecs();
+            DataContext = SystemSpecsRequest;
+            GetSystemSpecsAsync();
+            CheckConnectionAndChanges();
         }
 
-        protected override void OnInitialized(EventArgs e) {
-            base.OnInitialized(e);
+        private async void CheckConnectionAndChanges() {
+            await SetConnectionStatusAsync();
+            await CheckPendingChanges();
         }
 
-        private void GetSystemSpecs() {
+        private async Task CheckPendingChanges() {
+            var offlineContext = OfflineBussinessServicesContainer.GetOfflineDbContext();
+            if (await offlineContext.Enterprises.AnyAsync()) {
+                HasPendingChanges = true;
+            } else if (await offlineContext.SystemSpecs.AnyAsync()) {
+                HasPendingChanges = true;
+            } else {
+                HasPendingChanges = false;
+            }
+
+            pendingChangesPanel.Visibility = HasPendingChanges
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            syncButton.Visibility = IsServerOnline
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private async Task SetConnectionStatusAsync() {
+            IsServerOnline = await IsConnectedToServer();
+
+            offLineLabel.Visibility = IsServerOnline
+                            ? Visibility.Collapsed
+                            : Visibility.Visible;
+
+            if (HasPendingChanges && IsServerOnline) {
+                syncButton.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async Task<bool> IsConnectedToServer() {
+            return await _connectionClient.IsConnectionEstablished();
+        }
+
+        private void GetSystemSpecsAsync() {
             SystemSpecsRequest.MachineName = Environment.MachineName;
             SystemSpecsRequest.OperatingSystemVersion = GetOSFullname();
             SystemSpecsRequest.IsOperatingSystem64bits = Environment.Is64BitOperatingSystem;
@@ -88,21 +136,57 @@ namespace SystemInfo.Wpf {
             return activeAccounts;
         }
 
-        private void EditButton_Click(object sender , RoutedEventArgs e) {
+        private async void EditButton_Click(object sender , RoutedEventArgs e) {
+            await VerifyAndSetEnterprise();
+        }
+
+        private async Task VerifyAndSetEnterprise() {
             if (_isEditingEnterprise) {
-                if (!IsRncValid()) {
+                if (!SystemSpecsRequest.EnterpriseRNC.IsRncValid()) {
                     MessageBox.Show("RNC invalido.");
                     return;
                 }
-                SetEditingEnterprise(false);
+
+                EditButton.IsEnabled = false;
+                var result = await _enterpriseClient.GetEnterpriseAsync(SystemSpecsRequest.EnterpriseRNC);
+                EditButton.IsEnabled = true;
+
+                if (result.IsSuccess) {
+                    EnterpriseNameTextBox.Text = result.Record?.Name;
+                    SetEditingEnterprise(false);
+                    return;
+                }
+
+                var answer = MessageBox.Show("Esta empresa no existe, desea crearla?" , "Error" , MessageBoxButton.YesNo);
+                if (answer == MessageBoxResult.No) {
+                    EnterpriseNameTextBox.Text = string.Empty;
+                    return;
+                }
+
+                if (!isValidEnterprise()) {
+                    MessageBox.Show("Los datos de la empresa son inválidos.");
+                    return;
+                }
+                var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(new CreateEnterpriseRequest() {
+                    Name = EnterpriseNameTextBox.Text.Trim() ,
+                    RNC = SystemSpecsRequest.EnterpriseRNC
+                });
+
+                if (enterpriseResult.IsSuccess) {
+                    SetEditingEnterprise(false);
+                }
+
+                MessageBox.Show(enterpriseResult.Message);
+                return;
+
             } else {
                 SetEditingEnterprise(true);
             }
-
         }
 
-        private bool IsRncValid() {
-            return Regex.IsMatch(EnterpriseRncTextBox.Text , "^[0-9]{9}$");
+        private bool isValidEnterprise() {
+            return SystemSpecsRequest.EnterpriseRNC.IsRncValid()
+                   && !string.IsNullOrWhiteSpace(EnterpriseNameTextBox.Text);
         }
 
         private void SetEditingEnterprise(bool state) {
@@ -115,11 +199,15 @@ namespace SystemInfo.Wpf {
         }
 
         private void refreshButton_Click(object sender , RoutedEventArgs e) {
-            GetSystemSpecs();
+            refreshButton.IsEnabled = false;
+            GetSystemSpecsAsync();
+            CheckConnectionAndChanges();
+            refreshButton.IsEnabled = true;
+
         }
 
         private async void saveButton_Click(object sender , RoutedEventArgs e) {
-            if (!IsRncValid()) {
+            if (!SystemSpecsRequest.EnterpriseRNC.IsRncValid()) {
                 MessageBox.Show("RNC invalido.");
                 return;
             }
@@ -128,6 +216,59 @@ namespace SystemInfo.Wpf {
             var result = await _specsClient.SaveSystemSpecsAsync(SystemSpecsRequest);
             saveButton.IsEnabled = true;
             MessageBox.Show(result.Message);
+        }
+
+        private async void syncButton_Click(object sender , RoutedEventArgs e) {
+            try {
+                syncButton.IsEnabled = false;
+                await SyncChangesAsync();
+                syncButton.IsEnabled = true;
+                await CheckPendingChanges();
+                if (!HasPendingChanges) {
+                    MessageBox.Show("Los cambios fueron sincronizados");
+                } else {
+                    MessageBox.Show("Algunos cambios no fueron sincronizados");
+                }
+            } catch (Exception) {
+                syncButton.IsEnabled = true;
+            }
+        }
+
+        private async Task SyncChangesAsync() {
+            var offlineEnterpriseService = OfflineBussinessServicesContainer.EnterpriseService;
+            var offlineSystemSpecsService = OfflineBussinessServicesContainer.SystemSpecsService;
+
+            var offlineDbContext = OfflineBussinessServicesContainer.GetOfflineDbContext();
+
+            var pendingEnterprises = await offlineDbContext.Enterprises
+                .IgnoreAutoIncludes()
+                .Include(e => e.SystemSpecs).ThenInclude(s => s.WindowsAccounts)
+                .ToListAsync();
+
+            foreach (var enterprise in pendingEnterprises) {
+                var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(enterprise.ToCreateEntepriseRequest());
+                if (!enterpriseResult.IsSuccess) {
+                    //TODO:Save in invalidEnterprises Table
+                    continue;
+                }
+
+                foreach (var systemSpec in enterprise.SystemSpecs) {
+                    var systemSpecsResult = await _specsClient.SaveSystemSpecsAsync(systemSpec.ToCreateSystemSpecRequest());
+                    if (!systemSpecsResult.IsSuccess) {
+                        //TODO:Save in invalidSystemSpecs Table
+                        continue;
+                    }
+                }
+
+                try {
+                    offlineDbContext.Enterprises.Remove(enterprise);
+                    await offlineDbContext.SaveChangesAsync();
+                } catch (Exception) {
+                    MessageBox.Show("Error al remover los cambios pendientes");
+                } finally {
+                    await offlineDbContext.DisposeAsync();
+                }
+            }
         }
     }
 }
