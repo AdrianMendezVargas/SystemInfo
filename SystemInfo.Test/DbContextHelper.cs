@@ -40,14 +40,14 @@ namespace SystemInfo.Services.Tests {
                     ProcessorCount = 4,
                     ProcessorName = "Intel i7",
                     TotalMemoryInGigaBytes = 8,
-                    WindowsAccounts = new List<WindowsAccount>(){
-                        new WindowsAccount {
+                    HardDisks = new List<HardDisk>(){
+                        new HardDisk {
                             Id = 1,
-                            Username = "Visitante"
+                            Label = "Visitante"
                         },
-                        new WindowsAccount {
+                        new HardDisk {
                             Id = 2,
-                            Username = "Recepcion"
+                            Label = "Recepcion"
                         }
                     },
                     CreatedOn = DateTime.UtcNow,
@@ -61,14 +61,14 @@ namespace SystemInfo.Services.Tests {
                     ProcessorCount = 4,
                     ProcessorName = "Intel i9",
                     TotalMemoryInGigaBytes = 16,
-                    WindowsAccounts = new List<WindowsAccount>(){
-                        new WindowsAccount {
+                    HardDisks = new List<HardDisk>(){
+                        new HardDisk {
                             Id = 3,
-                            Username = "Guest"
+                            Label = "Guest"
                         },
-                        new WindowsAccount {
+                        new HardDisk {
                             Id = 4,
-                            Username = "Admin"
+                            Label = "Admin"
                         }
                     },
                     CreatedOn = DateTime.UtcNow,
@@ -82,14 +82,14 @@ namespace SystemInfo.Services.Tests {
                     ProcessorCount = 2,
                     ProcessorName = "Intel i3",
                     TotalMemoryInGigaBytes = 8,
-                    WindowsAccounts = new List<WindowsAccount>(){
-                        new WindowsAccount {
+                    HardDisks = new List<HardDisk>(){
+                        new HardDisk {
                             Id = 5,
-                            Username = "Administracion"
+                            Label = "Administracion"
                         },
-                        new WindowsAccount {
+                        new HardDisk {
                             Id = 6,
-                            Username = "Caja"
+                            Label = "Caja"
                         }
                     },
                     CreatedOn = DateTime.UtcNow

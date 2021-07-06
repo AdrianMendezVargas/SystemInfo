@@ -23,7 +23,7 @@ namespace SystemInfo.Models.Data {
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<SystemSpecs>()
-                .HasMany(s => s.WindowsAccounts)
+                .HasMany(s => s.HardDisks)
                 .WithOne(w => w.SystemSpecs)
                 .OnDelete(DeleteBehavior.Cascade);
 

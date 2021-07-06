@@ -21,8 +21,8 @@ namespace SystemInfo.Models.Mappers {
                 TotalMemoryInGigaBytes = saveRequest.TotalMemoryInGigaBytes ,
             };
 
-            saveRequest.WindowsAccounts.ForEach(a => {
-                systemSpec.WindowsAccounts.Add(new WindowsAccount() { Username = a.Username});
+            saveRequest.HardDisks.ForEach(hardDiskDetails => {
+                systemSpec.HardDisks.Add(hardDiskDetails.ToHardDisk());
             });
 
             return systemSpec;
@@ -40,8 +40,8 @@ namespace SystemInfo.Models.Mappers {
                 TotalMemoryInGigaBytes = systemSpecs.TotalMemoryInGigaBytes ,
             };
 
-            systemSpecs.WindowsAccounts.ForEach(a => {
-                systemSpecsDetails.WindowsAccounts.Add(a.ToWindowsAccountDetails());
+            systemSpecs.HardDisks.ForEach(hardDisk => {
+                systemSpecsDetails.HardDisk.Add(hardDisk.ToHardDiskDetails());
             });
 
             return systemSpecsDetails;
@@ -59,8 +59,8 @@ namespace SystemInfo.Models.Mappers {
                 TotalMemoryInGigaBytes = systemSpecs.TotalMemoryInGigaBytes ,
             };
 
-            systemSpecs.WindowsAccounts.ForEach(a => {
-                systemSpecsRequest.WindowsAccounts.Add(a.ToWindowsAccountDetails());
+            systemSpecs.HardDisks.ForEach(a => {
+                systemSpecsRequest.HardDisks.Add(a.ToHardDiskDetails());
             });
 
             return systemSpecsRequest;

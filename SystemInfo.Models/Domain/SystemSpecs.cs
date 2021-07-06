@@ -19,7 +19,7 @@ namespace SystemInfo.Models.Domain {
         public string EnterpriseRNC { get; set; }
         public virtual Enterprise Enterprise { get; set; }
 
-        public virtual List<WindowsAccount> WindowsAccounts { get; set; } = new List<WindowsAccount>();
+        public virtual List<HardDisk> HardDisks { get; set; } = new List<HardDisk>();
 
     }
 }

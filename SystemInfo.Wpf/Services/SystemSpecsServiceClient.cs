@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using SystemInfo.Services;
+using SystemInfo.Shared.Enums;
 using SystemInfo.Shared.Models;
 using SystemInfo.Shared.Requests;
 using SystemInfo.Shared.Responses;
@@ -49,7 +50,7 @@ namespace SystemInfo.Wpf.Services {
 
         private EmptyOperationResponse NotFoundEndpointEmptyOperationResponse() {
             return new EmptyOperationResponse {
-                IsSuccess = false ,
+                OperationResult = ServiceResult.Unknown ,
                 Message = "No se encontró el endpoint especificado." +
                         "\nConfigure lo en App.Config"
             };
@@ -57,7 +58,7 @@ namespace SystemInfo.Wpf.Services {
 
         private EmptyOperationResponse NotFoundHostEmptyOperationResponse() {
             return new EmptyOperationResponse {
-                IsSuccess = false ,
+                OperationResult = ServiceResult.Unknown ,
                 Message = "No se encontró el host especificado." +
                         "\nConfigure lo en App.Config"
             };

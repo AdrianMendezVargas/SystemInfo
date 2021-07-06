@@ -9,6 +9,7 @@ using SystemInfo.Repository;
 using SystemInfo.Models.Domain;
 using SystemInfo.Shared.Requests;
 using SystemInfo.Shared.Models;
+using SystemInfo.Shared.Enums;
 
 namespace SystemInfo.Services.Tests {
     [TestClass()]
@@ -26,7 +27,7 @@ namespace SystemInfo.Services.Tests {
         }
 
         [TestMethod()]
-        public async Task CreateSystemSpecs_ShouldCreateTheSpecsAndCreateTheWindowsAccounts() {
+        public async Task CreateSystemSpecs_ShouldCreateTheSpecsAndCreateTheHardDisks() {
             var systemSpecRequest = new CreateSystemSpecsRequest {
                 EnterpriseRNC = "123456789" ,
                 IsOperatingSystem64bits = true ,
@@ -35,19 +36,23 @@ namespace SystemInfo.Services.Tests {
                 ProcessorCount = 4 ,
                 ProcessorName = "Intel i7" ,
                 TotalMemoryInGigaBytes = 8 ,
-                WindowsAccounts = new List<WindowsAccountDetails>(){
-                    new WindowsAccountDetails {
-                        Username = "Visitante"
+                HardDisks = new List<HardDiskDetails>(){
+                    new HardDiskDetails {
+                        Label = "C:/",
+                        FreeSpaceInGigabytes = 80,
+                        SizeInGigabytes = 500
                     },
-                    new WindowsAccountDetails {
-                        Username = "Recepcion"
+                    new HardDiskDetails {
+                        Label = "D:/",
+                        FreeSpaceInGigabytes = 80,
+                        SizeInGigabytes = 500
                     }
                 }
             };
 
             var result = await SystemSpecsService.CreateAsync(systemSpecRequest);
 
-            Assert.IsTrue(result.IsSuccess);
+            Assert.IsTrue(result.OperationResult == ServiceResult.Success);
 
         }
 
@@ -61,19 +66,23 @@ namespace SystemInfo.Services.Tests {
                 ProcessorCount = 4 ,
                 ProcessorName = "Intel i7" ,
                 TotalMemoryInGigaBytes = 8 ,
-                WindowsAccounts = new List<WindowsAccountDetails>(){
-                    new WindowsAccountDetails {
-                        Username = "Visitante"
+                HardDisks = new List<HardDiskDetails>(){
+                    new HardDiskDetails {
+                        Label = "C:/",
+                        FreeSpaceInGigabytes = 400,
+                        SizeInGigabytes = 500
                     },
-                    new WindowsAccountDetails {
-                        Username = "Recepcion"
+                    new HardDiskDetails {
+                        Label = "C:/",
+                        FreeSpaceInGigabytes = 900,
+                        SizeInGigabytes = 1000
                     }
                 }
             };
 
             var result = await SystemSpecsService.CreateAsync(systemSpecRequest);
 
-            Assert.IsFalse(result.IsSuccess);
+            Assert.IsFalse(result.OperationResult == ServiceResult.Success);
 
         }
 
@@ -87,19 +96,23 @@ namespace SystemInfo.Services.Tests {
                 ProcessorCount = 4 ,
                 ProcessorName = "Intel i7" ,
                 TotalMemoryInGigaBytes = 8 ,
-                WindowsAccounts = new List<WindowsAccountDetails>(){
-                    new WindowsAccountDetails {
-                        Username = "Visitante"
+                HardDisks = new List<HardDiskDetails>(){
+                    new HardDiskDetails {
+                        Label = "C:/",
+                        FreeSpaceInGigabytes = 80,
+                        SizeInGigabytes = 500
                     },
-                    new WindowsAccountDetails {
-                        Username = "Recepcion"
+                    new HardDiskDetails {
+                        Label = "D:/",
+                        FreeSpaceInGigabytes = 400,
+                        SizeInGigabytes = 500
                     }
                 }
             };
 
             var result = await SystemSpecsService.CreateAsync(systemSpecRequest);
 
-            Assert.IsFalse(result.IsSuccess);
+            Assert.IsFalse(result.OperationResult == ServiceResult.Success);
 
         }
 

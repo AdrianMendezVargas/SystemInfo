@@ -35,6 +35,31 @@ namespace SystemInfo.Wpf.Migrations
                     b.ToTable("Enterprises");
                 });
 
+            modelBuilder.Entity("SystemInfo.Models.Domain.HardDisk", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FreeSpaceInGigabytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SizeInGigabytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SystemSpecsId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SystemSpecsId");
+
+                    b.ToTable("HardDisk");
+                });
+
             modelBuilder.Entity("SystemInfo.Models.Domain.SystemSpecs", b =>
                 {
                     b.Property<int>("Id")
@@ -75,23 +100,15 @@ namespace SystemInfo.Wpf.Migrations
                     b.ToTable("SystemSpecs");
                 });
 
-            modelBuilder.Entity("SystemInfo.Models.Domain.WindowsAccount", b =>
+            modelBuilder.Entity("SystemInfo.Models.Domain.HardDisk", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                    b.HasOne("SystemInfo.Models.Domain.SystemSpecs", "SystemSpecs")
+                        .WithMany("HardDisks")
+                        .HasForeignKey("SystemSpecsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Property<int>("SystemSpecsId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Username")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SystemSpecsId");
-
-                    b.ToTable("WindowsAccount");
+                    b.Navigation("SystemSpecs");
                 });
 
             modelBuilder.Entity("SystemInfo.Models.Domain.SystemSpecs", b =>
@@ -104,17 +121,6 @@ namespace SystemInfo.Wpf.Migrations
                     b.Navigation("Enterprise");
                 });
 
-            modelBuilder.Entity("SystemInfo.Models.Domain.WindowsAccount", b =>
-                {
-                    b.HasOne("SystemInfo.Models.Domain.SystemSpecs", "SystemSpecs")
-                        .WithMany("WindowsAccounts")
-                        .HasForeignKey("SystemSpecsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SystemSpecs");
-                });
-
             modelBuilder.Entity("SystemInfo.Models.Domain.Enterprise", b =>
                 {
                     b.Navigation("SystemSpecs");
@@ -122,7 +128,7 @@ namespace SystemInfo.Wpf.Migrations
 
             modelBuilder.Entity("SystemInfo.Models.Domain.SystemSpecs", b =>
                 {
-                    b.Navigation("WindowsAccounts");
+                    b.Navigation("HardDisks");
                 });
 #pragma warning restore 612, 618
         }

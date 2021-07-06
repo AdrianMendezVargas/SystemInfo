@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SystemInfo.Models.Mappers;
 using SystemInfo.Services;
+using SystemInfo.Shared.Enums;
 using SystemInfo.Shared.Models;
 using SystemInfo.Shared.Requests;
 using SystemInfo.Shared.Responses;
@@ -36,6 +37,9 @@ namespace SystemInfo.Wpf.Services {
                 if (!httpResponse.IsSuccessStatusCode) {
                     if (httpResponse.StatusCode == HttpStatusCode.NotFound) {
                         return NotFoundEndpointEmptyOperationResponse();
+                    }
+                    if (httpResponse.StatusCode == HttpStatusCode.InternalServerError) {
+                        return InternalSererErrorOperationResponse();
                     }
                     var result = await httpResponse.Content.ReadFromJsonAsync<EmptyOperationResponse>();
                     return result;
@@ -70,7 +74,7 @@ namespace SystemInfo.Wpf.Services {
 
                     var result = await httpResponse.Content.ReadFromJsonAsync<EmptyOperationResponse>();
                     return new OperationResponse<EnterpriseDetails>() {
-                        IsSuccess = result.IsSuccess ,
+                        OperationResult = result.OperationResult ,
                         Message = result.Message ,
                         Record = new EnterpriseDetails()
                     };
@@ -84,7 +88,7 @@ namespace SystemInfo.Wpf.Services {
                     offlineOperationResponse.Message = offlineOperationResponse.Message.Insert(0 , "OFFLINE: ");
 
                     return new OperationResponse<EnterpriseDetails>() {
-                        IsSuccess = offlineOperationResponse.IsSuccess ,
+                        OperationResult = offlineOperationResponse.OperationResult ,
                         Message = offlineOperationResponse.Message ,
                         Record = offlineOperationResponse.Record.ToEnterpriseDetails()
                     };
@@ -96,7 +100,7 @@ namespace SystemInfo.Wpf.Services {
 
         private static OperationResponse<EnterpriseDetails> NotFoundOperationResponse() {
             return new OperationResponse<EnterpriseDetails>() {
-                IsSuccess = false ,
+                OperationResult = ServiceResult.Unknown ,
                 Message = "No se encontró el endpoint especificado." +
                                                   "\nConfigure lo en App.Config" ,
                 Record = new EnterpriseDetails()
@@ -105,7 +109,7 @@ namespace SystemInfo.Wpf.Services {
 
         private static OperationResponse<EnterpriseDetails> UnkownHostOperationResponse() {
             return new OperationResponse<EnterpriseDetails>() {
-                IsSuccess = false ,
+                OperationResult = ServiceResult.Unknown ,
                 Message = "El host no ha sido encontrado.\n" +
                                           "Configure lo en App.config " ,
                 Record = new EnterpriseDetails()
@@ -114,15 +118,22 @@ namespace SystemInfo.Wpf.Services {
 
         private EmptyOperationResponse NotFoundEndpointEmptyOperationResponse() {
             return new EmptyOperationResponse {
-                IsSuccess = false ,
+                OperationResult = ServiceResult.Unknown ,
                 Message = "No se encontró el endpoint especificado." +
                         "\nConfigure lo en App.Config"
             };
         }
 
+        private EmptyOperationResponse InternalSererErrorOperationResponse() {
+            return new EmptyOperationResponse {
+                OperationResult = ServiceResult.Unknown ,
+                Message = "Ah ocurrido un error en el servidor"
+            };
+        }
+
         private EmptyOperationResponse NotFoundHostEmptyOperationResponse() {
             return new EmptyOperationResponse {
-                IsSuccess = false ,
+                OperationResult = ServiceResult.Unknown ,
                 Message = "No se encontró el host especificado." +
                         "\nConfigure lo en App.Config"
             };

@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Media;
 using SystemInfo.Models.Mappers;
 using SystemInfo.Services;
+using SystemInfo.Shared.Enums;
 using SystemInfo.Shared.Extensions;
 using SystemInfo.Shared.Models;
 using SystemInfo.Shared.Requests;
@@ -90,10 +91,9 @@ namespace SystemInfo.Wpf {
             SystemSpecsRequest.IsOperatingSystem64bits = Environment.Is64BitOperatingSystem;
             SystemSpecsRequest.TotalMemoryInGigaBytes = GetTotalMemoryInGigaBytes();
             SystemSpecsRequest.ProcessorCount = Environment.ProcessorCount;
-
+            SystemSpecsRequest.HardDisks = GetHardDisks();
             using (var mos = new ManagementObjectSearcher("Root\\CIMV2" , "")) {
                 SystemSpecsRequest.ProcessorName = GetCpuName(mos);
-                SystemSpecsRequest.WindowsAccounts = GetActiveUserAccounts(mos);
             }
             RefreshDataContext();
         }
@@ -122,18 +122,29 @@ namespace SystemInfo.Wpf {
             return "unknown";
         }
 
-        private List<WindowsAccountDetails> GetActiveUserAccounts(ManagementObjectSearcher mos) {
-            var activeAccounts = new List<WindowsAccountDetails>();
-            mos.Query = new ObjectQuery("SELECT Name FROM Win32_UserAccount WHERE Disabled = false");
-            foreach (ManagementObject mo in mos.Get()) {
-                try {
-                    activeAccounts.Add(new WindowsAccountDetails() {
-                        Username = mo.GetPropertyValue("Name").ToString()
-                });
+        private List<HardDiskDetails> GetHardDisks() {
+            var computer = new Computer();
+            var hardDiskList = new List<HardDiskDetails>();
 
-                } catch (Exception) { }
+            foreach (var drive in computer.FileSystem.Drives) {
+                if (drive.IsReady) {
+                    hardDiskList.Add(new HardDiskDetails() {
+                        Label = drive.Name ,
+                        FreeSpaceInGigabytes = GetAvailableFreeSpaceInGigaBytes(drive) ,
+                        SizeInGigabytes = GetTotalSizeInGigaBytes(drive)
+                    });
+                }
             }
-            return activeAccounts;
+
+            int GetTotalSizeInGigaBytes(System.IO.DriveInfo drive) {
+                return Convert.ToInt32(drive.TotalSize / 1024L / 1024L / 1024L);
+            }
+
+            int GetAvailableFreeSpaceInGigaBytes(System.IO.DriveInfo drive) {
+                return Convert.ToInt32(drive.AvailableFreeSpace / 1024L / 1024L / 1024L);
+            }
+
+            return hardDiskList;
         }
 
         private async void EditButton_Click(object sender , RoutedEventArgs e) {
@@ -151,7 +162,7 @@ namespace SystemInfo.Wpf {
                 var result = await _enterpriseClient.GetEnterpriseAsync(SystemSpecsRequest.EnterpriseRNC);
                 EditButton.IsEnabled = true;
 
-                if (result.IsSuccess) {
+                if (result.OperationResult == ServiceResult.Success) {
                     EnterpriseNameTextBox.Text = result.Record?.Name;
                     SetEditingEnterprise(false);
                     return;
@@ -172,7 +183,7 @@ namespace SystemInfo.Wpf {
                     RNC = SystemSpecsRequest.EnterpriseRNC
                 });
 
-                if (enterpriseResult.IsSuccess) {
+                if (enterpriseResult.OperationResult == ServiceResult.Success) {
                     SetEditingEnterprise(false);
                 }
 
@@ -191,7 +202,8 @@ namespace SystemInfo.Wpf {
 
         private void SetEditingEnterprise(bool state) {
             _isEditingEnterprise = state;
-            EditButton.Content = state ? "Accept" : "Edit";
+            editStackpanel.Visibility = state ? Visibility.Collapsed : Visibility.Visible;
+            acceptStackpanel.Visibility = !state ? Visibility.Collapsed : Visibility.Visible;
             EnterpriseNameTextBox.IsEnabled = state;
             EnterpriseRncTextBox.IsEnabled = state;
             refreshButton.IsEnabled = !state;
@@ -242,19 +254,21 @@ namespace SystemInfo.Wpf {
 
             var pendingEnterprises = await offlineDbContext.Enterprises
                 .IgnoreAutoIncludes()
-                .Include(e => e.SystemSpecs).ThenInclude(s => s.WindowsAccounts)
+                .Include(e => e.SystemSpecs).ThenInclude(s => s.HardDisks)
                 .ToListAsync();
 
             foreach (var enterprise in pendingEnterprises) {
                 var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(enterprise.ToCreateEntepriseRequest());
-                if (!enterpriseResult.IsSuccess) {
+                if (enterpriseResult.OperationResult == ServiceResult.InvalidData
+                    || enterpriseResult.OperationResult == ServiceResult.Unknown) {
                     //TODO:Save in invalidEnterprises Table
                     continue;
                 }
 
                 foreach (var systemSpec in enterprise.SystemSpecs) {
                     var systemSpecsResult = await _specsClient.SaveSystemSpecsAsync(systemSpec.ToCreateSystemSpecRequest());
-                    if (!systemSpecsResult.IsSuccess) {
+                    if (enterpriseResult.OperationResult == ServiceResult.InvalidData
+                    || enterpriseResult.OperationResult == ServiceResult.Unknown) {
                         //TODO:Save in invalidSystemSpecs Table
                         continue;
                     }

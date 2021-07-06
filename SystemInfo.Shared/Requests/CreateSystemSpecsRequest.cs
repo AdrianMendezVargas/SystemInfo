@@ -30,7 +30,7 @@ namespace SystemInfo.Shared.Requests {
         [RegularExpression("^[0-9]{9}$")]
         public string EnterpriseRNC { get; set; }
 
-        public List<WindowsAccountDetails> WindowsAccounts { get; set; } = new List<WindowsAccountDetails>();
+        public List<HardDiskDetails> HardDisks { get; set; } = new List<HardDiskDetails>();
 
         public virtual bool IsRncValid() {
             return Regex.IsMatch(EnterpriseRNC , "^[0-9]{9}$");

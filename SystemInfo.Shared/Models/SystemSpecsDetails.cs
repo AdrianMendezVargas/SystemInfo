@@ -20,6 +20,6 @@ namespace SystemInfo.Shared.Models {
 
         public string EnterpriseRNC { get; set; }
 
-        public List<WindowsAccountDetails> WindowsAccounts { get; set; } = new List<WindowsAccountDetails>();
+        public List<HardDiskDetails> HardDisk { get; set; } = new List<HardDiskDetails>();
     }
 }

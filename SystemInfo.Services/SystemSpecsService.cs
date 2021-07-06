@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using SystemInfo.Models.Domain;
 using SystemInfo.Models.Mappers;
 using SystemInfo.Repository;
+using SystemInfo.Shared.Enums;
 using SystemInfo.Shared.Requests;
 using SystemInfo.Shared.Responses;
 
@@ -19,12 +20,12 @@ namespace SystemInfo.Services {
 
             bool enterpriseExist = await _unit.EnterpriseRepository.FindByRncAsync(saveSpecsRequest.EnterpriseRNC) != null;
             if (!enterpriseExist) {
-                return Error("No existe la empresa con el RNC indicado" , new SystemSpecs { });
+                return Error("No existe la empresa con el RNC indicado" , new SystemSpecs { }, ServiceResult.InvalidData);
             }
 
             bool machineNameAlreadyRegistered = await _unit.SystemSpecsRepository.FindByMachineNameOnRncAsync(saveSpecsRequest.MachineName, saveSpecsRequest.EnterpriseRNC) != null;
             if (machineNameAlreadyRegistered) {
-                return Error("Ya existe una maquina con este nombre en la empresa" , new SystemSpecs { });
+                return Error("Ya existe una maquina con este nombre en la empresa" , new SystemSpecs { }, ServiceResult.AlreadyExist);
             }
 
             var systemSpecs = saveSpecsRequest.ToSystemSpecs();
@@ -38,7 +39,7 @@ namespace SystemInfo.Services {
             await _unit.SystemSpecsRepository.CreateAsync(systemSpecs);
             var done = await _unit.CommitChangesAsync();
             return done ? Success("La especificaciones se guardaron exitosamente" , systemSpecs)
-                        : Error("No se pudo guardar la especificaciones" , new SystemSpecs { });
+                        : Error("No se pudo guardar la especificaciones" , new SystemSpecs { }, ServiceResult.Unknown);
         }
 
         public Task<OperationResponse<SystemSpecs>> DeleteAsync(int taskId) {

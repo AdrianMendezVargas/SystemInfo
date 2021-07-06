@@ -33,7 +33,7 @@ namespace SystemInfo.Repository {
 
         public async Task<List<SystemSpecs>> GetSystemSpecsByEnterpriseRncAsync(string rnc) {
             return await _db.SystemSpecs.Where(s => s.EnterpriseRNC == rnc)
-                .Include(s => s.WindowsAccounts)
+                .Include(s => s.HardDisks)
                 .ToListAsync();
         }
 

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SystemInfo.Models.Mappers;
 using SystemInfo.Services;
+using SystemInfo.Shared.Enums;
 using SystemInfo.Shared.Models;
 using SystemInfo.Shared.Requests;
 using SystemInfo.Shared.Responses;
@@ -25,16 +26,16 @@ namespace SystemInfo.Api.Controllers {
         [HttpPost]
         public async Task<IActionResult> Post(CreateSystemSpecsRequest saveRequest) {
             var result = await _specsService.CreateAsync(saveRequest);
-            if (result.IsSuccess) {
+            if (result.OperationResult == ServiceResult.Success) {
                 return Ok(new OperationResponse<SystemSpecsDetails> {
                     Message = result.Message ,
-                    IsSuccess = result.IsSuccess ,
+                    OperationResult = result.OperationResult ,
                     Record = result.Record.ToSystemSpecsDetails()
                 });
             } else {
                 return BadRequest(new EmptyOperationResponse {
                     Message = result.Message ,
-                    IsSuccess = result.IsSuccess ,
+                    OperationResult = result.OperationResult ,
                 });
             }
         }
