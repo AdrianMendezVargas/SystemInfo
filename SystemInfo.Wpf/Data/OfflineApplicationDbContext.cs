@@ -10,6 +10,8 @@ using SystemInfo.Models.Domain;
 namespace SystemInfo.Wpf.Data {
     public class OfflineApplicationDbContext : ApplicationDbContext {
 
+        public DbSet<PreferencesKeyValues> Preferences { get; set; }
+
         public OfflineApplicationDbContext(): base() {}
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {

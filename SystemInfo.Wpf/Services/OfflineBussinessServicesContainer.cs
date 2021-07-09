@@ -13,6 +13,7 @@ namespace SystemInfo.Wpf.Services {
 
         private static ISystemSpecsService _systemSpecsService;
         private static IEnterpriseService _enterpriseService;
+        private static PreferencesService _preferencesService;
 
         public static ISystemSpecsService SystemSpecsService {
             get {
@@ -23,6 +24,12 @@ namespace SystemInfo.Wpf.Services {
         public static IEnterpriseService EnterpriseService {
             get {
                 return _enterpriseService ??= new EnterpriseService(GetOfflineUnit());
+            }
+        }
+
+        public static PreferencesService PreferencesService {
+            get {
+                return _preferencesService ??= new PreferencesService(GetOfflineDbContext());
             }
         }
 

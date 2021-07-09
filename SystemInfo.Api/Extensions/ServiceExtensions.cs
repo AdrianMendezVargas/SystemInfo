@@ -27,7 +27,7 @@ namespace SystemInfo.Api.Extensions {
         public static void AddBussinessServices(this IServiceCollection services) {
             services.AddScoped<ISystemSpecsService , SystemSpecsService>();
             services.AddScoped<IEnterpriseService , EnterpriseService>();
-
+            services.AddScoped<IAuthenticationService , AuthenticationService>();
         }
 
     }

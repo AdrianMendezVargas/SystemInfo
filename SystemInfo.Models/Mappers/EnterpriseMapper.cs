@@ -25,6 +25,14 @@ namespace SystemInfo.Models.Mappers {
             };
         }
 
+        public static List<EnterpriseDetails> ToListEnterpriseDetails(this List<Enterprise> enterpriseList) {
+            var enterpriseDetailsList = new List<EnterpriseDetails>();
+            enterpriseList.ForEach((enterprise) => {
+                enterpriseDetailsList.Add(enterprise.ToEnterpriseDetails());
+            });
+            return enterpriseDetailsList;
+        }
+
         public static CreateEnterpriseRequest ToCreateEntepriseRequest(this Enterprise enterprise) {
             return new CreateEnterpriseRequest() {
                 RNC = enterprise.RNC ,

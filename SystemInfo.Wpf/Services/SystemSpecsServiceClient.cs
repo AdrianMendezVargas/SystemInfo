@@ -11,7 +11,7 @@ using SystemInfo.Shared.Responses;
 using SystemInfo.Wpf.Configuration;
 
 namespace SystemInfo.Wpf.Services {
-    public class SystemSpecsServiceClient {
+    public class SystemSpecsServiceClient : BaseServiceClient {
 
         private readonly ISystemSpecsService offlineSpecService;
         private readonly HttpClient httpClient;
@@ -24,12 +24,22 @@ namespace SystemInfo.Wpf.Services {
         }
 
         public async Task<EmptyOperationResponse> SaveSystemSpecsAsync(CreateSystemSpecsRequest specsRequest) {
+            if (!MainWindow.IsServerOnline) {
+                return await SaveSpecsInLocalDb(specsRequest);
+            }
+
             HttpResponseMessage httpResponse;
             try {
                 httpResponse = await httpClient.PostAsJsonAsync(_configuration["Api:SystemSpecs:Create"] , specsRequest);
                 if (!httpResponse.IsSuccessStatusCode) {
                     if (httpResponse.StatusCode == HttpStatusCode.NotFound) {
-                        return NotFoundEndpointEmptyOperationResponse();
+                        return NotFoundEndpointOperationResponse<EmptyOperationResponse>();
+                    }
+                    if (httpResponse.StatusCode == HttpStatusCode.InternalServerError) {
+                        return InternalServerErrorOperationResponse<EmptyOperationResponse>();
+                    }
+                    if (httpResponse.StatusCode == HttpStatusCode.Unauthorized) {
+                        return UnauthorizedOperationResponse<EmptyOperationResponse>();
                     }
                     var result = await httpResponse.Content.ReadFromJsonAsync<EmptyOperationResponse>();
                     return result;
@@ -39,29 +49,17 @@ namespace SystemInfo.Wpf.Services {
             } catch (HttpRequestException requestException) {
 
                 if (requestException.InnerException.GetType() == typeof(SocketException)) {
-                    var offlineOperationResponse = await offlineSpecService.CreateAsync(specsRequest);
-                    offlineOperationResponse.Message = offlineOperationResponse.Message.Insert(0 , "OFFLINE: ");
-                    return offlineOperationResponse;
+                    return await SaveSpecsInLocalDb(specsRequest);
                 }
-                return NotFoundHostEmptyOperationResponse();
+                return UnkownHostOperationResponse<EmptyOperationResponse>();
             }        
         
         }
 
-        private EmptyOperationResponse NotFoundEndpointEmptyOperationResponse() {
-            return new EmptyOperationResponse {
-                OperationResult = ServiceResult.Unknown ,
-                Message = "No se encontró el endpoint especificado." +
-                        "\nConfigure lo en App.Config"
-            };
-        }
-
-        private EmptyOperationResponse NotFoundHostEmptyOperationResponse() {
-            return new EmptyOperationResponse {
-                OperationResult = ServiceResult.Unknown ,
-                Message = "No se encontró el host especificado." +
-                        "\nConfigure lo en App.Config"
-            };
+        private async Task<EmptyOperationResponse> SaveSpecsInLocalDb(CreateSystemSpecsRequest specsRequest) {
+            var offlineOperationResponse = await offlineSpecService.CreateAsync(specsRequest);
+            offlineOperationResponse.Message = offlineOperationResponse.Message.Insert(0 , "OFFLINE: ");
+            return offlineOperationResponse;
         }
     }
 }

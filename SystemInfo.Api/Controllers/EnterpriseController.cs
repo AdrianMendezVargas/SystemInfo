@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -14,6 +16,7 @@ using SystemInfo.Shared.Responses;
 namespace SystemInfo.Api.Controllers {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class EnterpriseController : ControllerBase {
         private readonly IEnterpriseService _enterpriseService;
 
@@ -50,6 +53,25 @@ namespace SystemInfo.Api.Controllers {
                     Message = result.Message ,
                     OperationResult = result.OperationResult ,
                     Record = result.Record.ToEnterpriseDetails()
+                });
+            } else {
+                return BadRequest(new EmptyOperationResponse {
+                    Message = result.Message ,
+                    OperationResult = result.OperationResult ,
+                });
+            }
+        }
+
+        [ProducesResponseType(200 , Type = typeof(OperationResponse<List<EnterpriseDetails>>))]
+        [ProducesResponseType(400 , Type = typeof(EmptyOperationResponse))]
+        [HttpGet]
+        public async Task<IActionResult> GetEnterprises() {
+            var result = await _enterpriseService.GetEnterprisesAsync();
+            if (result.OperationResult == ServiceResult.Success) {
+                return Ok(new OperationResponse<List<EnterpriseDetails>> {
+                    Message = result.Message ,
+                    OperationResult = result.OperationResult ,
+                    Record = result.Record.ToListEnterpriseDetails()
                 });
             } else {
                 return BadRequest(new EmptyOperationResponse {

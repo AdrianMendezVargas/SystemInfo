@@ -8,12 +8,15 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using SystemInfo.Models.Domain;
 using SystemInfo.Models.Mappers;
 using SystemInfo.Services;
 using SystemInfo.Shared.Enums;
 using SystemInfo.Shared.Extensions;
 using SystemInfo.Shared.Models;
 using SystemInfo.Shared.Requests;
+using SystemInfo.Shared.Responses;
+using SystemInfo.Wpf.Configuration;
 using SystemInfo.Wpf.Data;
 using SystemInfo.Wpf.Services;
 
@@ -31,26 +34,88 @@ namespace SystemInfo.Wpf {
         private SystemSpecsServiceClient _specsClient;
         private EnterpriseServiceClient _enterpriseClient;
         private ConnectionServiceClient _connectionClient;
+        private AuthenticationServiceClient _authenticationClient;
+        private PreferencesService _preferencesService;
 
         public MainWindow() {
             InitializeComponent();
             SystemSpecsRequest = new CreateSystemSpecsRequest();
             _computerInfo = new ComputerInfo();
-            _specsClient = new SystemSpecsServiceClient();
-            _enterpriseClient = new EnterpriseServiceClient();
-            _connectionClient = new ConnectionServiceClient();
 
+            InitServices();
             DataContext = SystemSpecsRequest;
             GetSystemSpecsAsync();
-            CheckConnectionAndChanges();
+            InitAsyncTasks();
         }
 
-        private async void CheckConnectionAndChanges() {
+        private async void InitAsyncTasks() {
+            await SetTokenAsync();
             await SetConnectionStatusAsync();
-            await CheckPendingChanges();
+            await CheckPendingChangesAsync();
         }
 
-        private async Task CheckPendingChanges() {
+        private void InitServices() {
+            _authenticationClient = new AuthenticationServiceClient();
+            _connectionClient = new ConnectionServiceClient();
+            _preferencesService = OfflineBussinessServicesContainer.PreferencesService;
+            
+            _specsClient = new SystemSpecsServiceClient();
+            _enterpriseClient = new EnterpriseServiceClient();
+        }
+
+        public async Task<bool> SetTokenAsync() {
+            string exprirationDateString = (await _preferencesService.Get(PreferencesKeys.TokenExpiration))?.Value;
+            if (!string.IsNullOrWhiteSpace(exprirationDateString)) {
+
+                DateTime expirationDate = Convert.ToDateTime(exprirationDateString);
+
+                if (expirationDate > DateTime.UtcNow) {  //There is not need to request a new token
+                    bool tokenReady = await UseLocalToken(expirationDate);
+                    if (tokenReady) {
+                        return tokenReady;
+                    } else {
+                        return await RequestNewToken();
+                    }
+                }
+            }
+
+            return await RequestNewToken();
+        }
+
+        private async Task<bool> RequestNewToken() {
+            await SetConnectionStatusAsync();
+            var result = await _authenticationClient.RequestToken();
+            if (result.OperationResult == ServiceResult.Success) {
+                return await SaveTokenAndUpdateServices(result.Record);
+
+            }
+            return false;
+        }
+
+        private async Task<bool> UseLocalToken(DateTime expirationDate) {
+            string token = (await _preferencesService.Get(PreferencesKeys.Token))?.Value;
+            ConfigurationManager.AppSettings["Api:Token"] = token ?? "";
+            return token != null;
+        }
+
+        private async Task<bool> SaveTokenAndUpdateServices(TokenResponse tokenResponse) {
+
+            bool tokenSaved = await _preferencesService.Save(new PreferencesKeyValues() {
+                Key = PreferencesKeys.Token ,
+                Value = tokenResponse.Token
+            });
+
+            bool tokenExpiratioinSaved = await _preferencesService.Save(new PreferencesKeyValues() {
+                Key = PreferencesKeys.TokenExpiration ,
+                Value = tokenResponse.ExpirationDate.ToString("G")
+            });
+
+            ConfigurationManager.AppSettings["Api:Token"] = tokenResponse.Token;
+            InitServices();
+            return tokenSaved && tokenExpiratioinSaved;
+        }
+
+        private async Task CheckPendingChangesAsync() {
             var offlineContext = OfflineBussinessServicesContainer.GetOfflineDbContext();
             if (await offlineContext.Enterprises.AnyAsync()) {
                 HasPendingChanges = true;
@@ -159,6 +224,7 @@ namespace SystemInfo.Wpf {
                 }
 
                 EditButton.IsEnabled = false;
+                await SetTokenAsync();
                 var result = await _enterpriseClient.GetEnterpriseAsync(SystemSpecsRequest.EnterpriseRNC);
                 EditButton.IsEnabled = true;
 
@@ -168,27 +234,39 @@ namespace SystemInfo.Wpf {
                     return;
                 }
 
-                var answer = MessageBox.Show("Esta empresa no existe, desea crearla?" , "Error" , MessageBoxButton.YesNo);
-                if (answer == MessageBoxResult.No) {
+                if (result.OperationResult == ServiceResult.Unauthorized) {
                     EnterpriseNameTextBox.Text = string.Empty;
-                    return;
-                }
-
-                if (!isValidEnterprise()) {
-                    MessageBox.Show("Los datos de la empresa son inválidos.");
-                    return;
-                }
-                var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(new CreateEnterpriseRequest() {
-                    Name = EnterpriseNameTextBox.Text.Trim() ,
-                    RNC = SystemSpecsRequest.EnterpriseRNC
-                });
-
-                if (enterpriseResult.OperationResult == ServiceResult.Success) {
+                    EnterpriseRncTextBox.Text = string.Empty;
                     SetEditingEnterprise(false);
+                    MessageBox.Show(result.Message);
+                    return;
                 }
 
-                MessageBox.Show(enterpriseResult.Message);
-                return;
+                if (result.OperationResult == ServiceResult.NotFound) {
+                    var answer = MessageBox.Show("Esta empresa no existe, desea crearla?" , "Error" , MessageBoxButton.YesNo);
+                    if (answer == MessageBoxResult.No) {
+                        EnterpriseNameTextBox.Text = string.Empty;
+                        return;
+                    }
+
+                    if (!isValidEnterprise()) {
+                        MessageBox.Show("Introduzca un nombre para la empresa y vuelva a intentarlo.");
+                        return;
+                    }
+                    var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(new CreateEnterpriseRequest() {
+                        Name = EnterpriseNameTextBox.Text.Trim() ,
+                        RNC = SystemSpecsRequest.EnterpriseRNC
+                    });
+
+                    if (enterpriseResult.OperationResult == ServiceResult.Success) {
+                        SetEditingEnterprise(false);
+                    }
+
+                    MessageBox.Show(enterpriseResult.Message);
+                    return;
+                }
+
+                MessageBox.Show(result.Message);
 
             } else {
                 SetEditingEnterprise(true);
@@ -210,10 +288,11 @@ namespace SystemInfo.Wpf {
             saveButton.IsEnabled = !state;
         }
 
-        private void refreshButton_Click(object sender , RoutedEventArgs e) {
+        private async void refreshButton_Click(object sender , RoutedEventArgs e) {
             refreshButton.IsEnabled = false;
             GetSystemSpecsAsync();
-            CheckConnectionAndChanges();
+            await CheckPendingChangesAsync();
+            await SetConnectionStatusAsync();
             refreshButton.IsEnabled = true;
 
         }
@@ -225,6 +304,7 @@ namespace SystemInfo.Wpf {
             }
 
             saveButton.IsEnabled = false;
+            await SetTokenAsync();
             var result = await _specsClient.SaveSystemSpecsAsync(SystemSpecsRequest);
             saveButton.IsEnabled = true;
             MessageBox.Show(result.Message);
@@ -235,11 +315,11 @@ namespace SystemInfo.Wpf {
                 syncButton.IsEnabled = false;
                 await SyncChangesAsync();
                 syncButton.IsEnabled = true;
-                await CheckPendingChanges();
+                await CheckPendingChangesAsync();
                 if (!HasPendingChanges) {
                     MessageBox.Show("Los cambios fueron sincronizados");
                 } else {
-                    MessageBox.Show("Algunos cambios no fueron sincronizados");
+                    MessageBox.Show("Algunos cambios no fueron sincronizados. \nRevise la conexión a Internet y la contraseña del api.");
                 }
             } catch (Exception) {
                 syncButton.IsEnabled = true;
@@ -247,6 +327,8 @@ namespace SystemInfo.Wpf {
         }
 
         private async Task SyncChangesAsync() {
+            var readyToRemoveEnterprises = new List<Enterprise>();
+
             var offlineEnterpriseService = OfflineBussinessServicesContainer.EnterpriseService;
             var offlineSystemSpecsService = OfflineBussinessServicesContainer.SystemSpecsService;
 
@@ -274,14 +356,18 @@ namespace SystemInfo.Wpf {
                     }
                 }
 
-                try {
-                    offlineDbContext.Enterprises.Remove(enterprise);
-                    await offlineDbContext.SaveChangesAsync();
-                } catch (Exception) {
-                    MessageBox.Show("Error al remover los cambios pendientes");
-                } finally {
-                    await offlineDbContext.DisposeAsync();
+                if (enterpriseResult.OperationResult == ServiceResult.Success) {
+                    readyToRemoveEnterprises.Add(enterprise);
                 }
+            }
+
+            try {
+                offlineDbContext.Enterprises.RemoveRange(readyToRemoveEnterprises);
+                await offlineDbContext.SaveChangesAsync();
+            } catch (Exception) {
+                MessageBox.Show("Error al remover los cambios pendientes");
+            } finally {
+                await offlineDbContext.DisposeAsync();
             }
         }
     }

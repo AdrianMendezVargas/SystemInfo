@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -13,7 +15,7 @@ using SystemInfo.Shared.Responses;
 using SystemInfo.Wpf.Configuration;
 
 namespace SystemInfo.Wpf.Services {
-    public class EnterpriseServiceClient {
+    public class EnterpriseServiceClient : BaseServiceClient {
         //TODO: Create an baseServiceClient class to handle the exceptions
 
         private readonly IEnterpriseService offlineEnterpriseService;
@@ -28,7 +30,7 @@ namespace SystemInfo.Wpf.Services {
 
         public async Task<EmptyOperationResponse> SaveEnterpriseAsync(CreateEnterpriseRequest enterpriseRequest) {
             if (!MainWindow.IsServerOnline) {
-                return await SaveInLocalAsync(enterpriseRequest);
+                return await SaveEnterpriseLocalAsync(enterpriseRequest);
             }
 
             HttpResponseMessage httpResponse;
@@ -36,10 +38,13 @@ namespace SystemInfo.Wpf.Services {
                 httpResponse = await httpClient.PostAsJsonAsync(_configuration["Api:Enterprise:Create"] , enterpriseRequest);
                 if (!httpResponse.IsSuccessStatusCode) {
                     if (httpResponse.StatusCode == HttpStatusCode.NotFound) {
-                        return NotFoundEndpointEmptyOperationResponse();
+                        return NotFoundEndpointOperationResponse<EmptyOperationResponse>();
                     }
                     if (httpResponse.StatusCode == HttpStatusCode.InternalServerError) {
-                        return InternalSererErrorOperationResponse();
+                        return InternalServerErrorOperationResponse<EnterpriseDetails>();
+                    }
+                    if (httpResponse.StatusCode == HttpStatusCode.Unauthorized) {
+                        return UnauthorizedOperationResponse<EnterpriseDetails>();
                     }
                     var result = await httpResponse.Content.ReadFromJsonAsync<EmptyOperationResponse>();
                     return result;
@@ -49,29 +54,32 @@ namespace SystemInfo.Wpf.Services {
             } catch (HttpRequestException requestException) {
 
                 if (requestException.InnerException.GetType() == typeof(SocketException)) {
-                    return await SaveInLocalAsync(enterpriseRequest);
+                    return await SaveEnterpriseLocalAsync(enterpriseRequest);
                 }
-                return NotFoundHostEmptyOperationResponse();
+                return UnkownHostOperationResponse<EmptyOperationResponse>();
             }
 
         }
 
-        private async Task<EmptyOperationResponse> SaveInLocalAsync(CreateEnterpriseRequest enterpriseRequest) {
-            var offlineOperationResponse = await offlineEnterpriseService.CreateAsync(enterpriseRequest);
-            offlineOperationResponse.Message = offlineOperationResponse.Message.Insert(0 , "OFFLINE: ");
-            return offlineOperationResponse;
-        }
-
         public async Task<OperationResponse<EnterpriseDetails>> GetEnterpriseAsync(string enterpriseRnc) {
+            if (!MainWindow.IsServerOnline) {
+                return await GetEnterpriseFromLocalAsync(enterpriseRnc);
+            }
+
             HttpResponseMessage httpResponse;
             try {
                 httpResponse = await httpClient.GetAsync(_configuration["Api:Enterprise:GetByRnc"] + $"/{enterpriseRnc}");
-                
+
                 if (!httpResponse.IsSuccessStatusCode) {
                     if (httpResponse.StatusCode == HttpStatusCode.NotFound) {
-                        return NotFoundOperationResponse();
+                        return NotFoundEndpointOperationResponse<EnterpriseDetails>();
                     }
-
+                    if (httpResponse.StatusCode == HttpStatusCode.InternalServerError) {
+                        return InternalServerErrorOperationResponse<EnterpriseDetails>();
+                    }
+                    if (httpResponse.StatusCode == HttpStatusCode.Unauthorized) {
+                        return UnauthorizedOperationResponse<EnterpriseDetails>();
+                    }
                     var result = await httpResponse.Content.ReadFromJsonAsync<EmptyOperationResponse>();
                     return new OperationResponse<EnterpriseDetails>() {
                         OperationResult = result.OperationResult ,
@@ -84,58 +92,65 @@ namespace SystemInfo.Wpf.Services {
             } catch (HttpRequestException requestException) {
 
                 if (requestException.InnerException.GetType() == typeof(SocketException)) {
-                    var offlineOperationResponse = await offlineEnterpriseService.GetByRncAsync(enterpriseRnc);
-                    offlineOperationResponse.Message = offlineOperationResponse.Message.Insert(0 , "OFFLINE: ");
-
-                    return new OperationResponse<EnterpriseDetails>() {
-                        OperationResult = offlineOperationResponse.OperationResult ,
-                        Message = offlineOperationResponse.Message ,
-                        Record = offlineOperationResponse.Record.ToEnterpriseDetails()
-                    };
+                    return await GetEnterpriseFromLocalAsync(enterpriseRnc);
                 }
-                return UnkownHostOperationResponse();
+                return UnkownHostOperationResponse<EnterpriseDetails>();
             }
 
         }
 
-        private static OperationResponse<EnterpriseDetails> NotFoundOperationResponse() {
+        public async Task<OperationResponse<List<EnterpriseDetails>>> GetAllEnterprisesAsync() {
+            if (!MainWindow.IsServerOnline) {
+                return NoServerConnectionOperationResponse<List<EnterpriseDetails>>();
+            }
+
+            HttpResponseMessage httpResponse;
+            try {
+                httpResponse = await httpClient.GetAsync(_configuration["Api:Enterprise:GetAll"]);
+
+                if (!httpResponse.IsSuccessStatusCode) {
+                    if (httpResponse.StatusCode == HttpStatusCode.NotFound) {
+                        return NotFoundEndpointOperationResponse<List<EnterpriseDetails>>();
+                    }
+                    if (httpResponse.StatusCode == HttpStatusCode.InternalServerError) {
+                        return InternalServerErrorOperationResponse<List<EnterpriseDetails>>();
+                    }
+                    if (httpResponse.StatusCode == HttpStatusCode.Unauthorized) {
+                        return UnauthorizedOperationResponse<List<EnterpriseDetails>>();
+                    }
+                    var result = await httpResponse.Content.ReadFromJsonAsync<EmptyOperationResponse>();
+                    return new OperationResponse<List<EnterpriseDetails>>() {
+                        OperationResult = result.OperationResult ,
+                        Message = result.Message ,
+                        Record = null
+                    };
+                }
+                return await httpResponse.Content.ReadFromJsonAsync<OperationResponse<List<EnterpriseDetails>>>();
+
+            } catch (HttpRequestException requestException) {
+
+                if (requestException.InnerException.GetType() == typeof(SocketException)) {
+                    return NoServerConnectionOperationResponse<List<EnterpriseDetails>>();
+                }
+                return UnkownHostOperationResponse<List<EnterpriseDetails>>();
+            }
+
+        }
+
+        private async Task<EmptyOperationResponse> SaveEnterpriseLocalAsync(CreateEnterpriseRequest enterpriseRequest) {
+            var offlineOperationResponse = await offlineEnterpriseService.CreateAsync(enterpriseRequest);
+            offlineOperationResponse.Message = offlineOperationResponse.Message.Insert(0 , "OFFLINE: ");
+            return offlineOperationResponse;
+        }
+
+        private async Task<OperationResponse<EnterpriseDetails>> GetEnterpriseFromLocalAsync(string enterpriseRnc) {
+            var offlineOperationResponse = await offlineEnterpriseService.GetByRncAsync(enterpriseRnc);
+            offlineOperationResponse.Message = offlineOperationResponse.Message.Insert(0 , "OFFLINE: ");
+
             return new OperationResponse<EnterpriseDetails>() {
-                OperationResult = ServiceResult.Unknown ,
-                Message = "No se encontró el endpoint especificado." +
-                                                  "\nConfigure lo en App.Config" ,
-                Record = new EnterpriseDetails()
-            };
-        }
-
-        private static OperationResponse<EnterpriseDetails> UnkownHostOperationResponse() {
-            return new OperationResponse<EnterpriseDetails>() {
-                OperationResult = ServiceResult.Unknown ,
-                Message = "El host no ha sido encontrado.\n" +
-                                          "Configure lo en App.config " ,
-                Record = new EnterpriseDetails()
-            };
-        }
-
-        private EmptyOperationResponse NotFoundEndpointEmptyOperationResponse() {
-            return new EmptyOperationResponse {
-                OperationResult = ServiceResult.Unknown ,
-                Message = "No se encontró el endpoint especificado." +
-                        "\nConfigure lo en App.Config"
-            };
-        }
-
-        private EmptyOperationResponse InternalSererErrorOperationResponse() {
-            return new EmptyOperationResponse {
-                OperationResult = ServiceResult.Unknown ,
-                Message = "Ah ocurrido un error en el servidor"
-            };
-        }
-
-        private EmptyOperationResponse NotFoundHostEmptyOperationResponse() {
-            return new EmptyOperationResponse {
-                OperationResult = ServiceResult.Unknown ,
-                Message = "No se encontró el host especificado." +
-                        "\nConfigure lo en App.Config"
+                OperationResult = offlineOperationResponse.OperationResult ,
+                Message = offlineOperationResponse.Message ,
+                Record = offlineOperationResponse.Record.ToEnterpriseDetails()
             };
         }
 

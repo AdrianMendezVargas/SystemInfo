@@ -15,23 +15,17 @@
         TextOptions.TextRenderingMode="Auto"        
         Background="{DynamicResource MaterialDesignPaper}"
         FontFamily="{DynamicResource MaterialDesignFont}"
-        Title="SystemInfo" Height="506" Width="620" ResizeMode="CanMinimize">
+        Title="SystemInfo" Height="476" Width="620" ResizeMode="CanMinimize">
     <Window.DataContext>
         <Requests:CreateSystemSpecsRequest/>
     </Window.DataContext>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="30"/>
             <RowDefinition Height="377" />
             <RowDefinition Height="60" />
         </Grid.RowDefinitions>
-        <Menu Grid.Row="0" Background="#FFD5EDF0">
-            <MenuItem Header="_Consultas" Height="30" >
-                <MenuItem x:Name="ConsultEnterprisesMenuItem" Header="Consultar _Enterprises" />
-                <MenuItem x:Name="ConsultSystemSpecsMenuItem" Header="Consultar _SystemSpecs" />
-            </MenuItem>
-        </Menu>
-        <Grid Grid.Row="1">
+
+        <Grid Grid.Row="0">
             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,20,0,0">
                 <DockPanel LastChildFill="True">
                     <Label  Content="Enterprise name:" VerticalContentAlignment="Center" FontWeight="Bold" FontSize="14"/>
@@ -41,7 +35,7 @@
                     <Label Content="RNC:" VerticalContentAlignment="Center" FontWeight="Bold" FontSize="14"/>
                     <TextBox x:Name="EnterpriseRncTextBox" IsEnabled="False" MinWidth="50" Width="100" MaxWidth="100" VerticalAlignment="Center"  d:Text="056125469" FontSize="14" Text="{Binding EnterpriseRNC}" TextWrapping="NoWrap"/>
                 </DockPanel>
-                <Button x:Name="EditButton" Margin="10,0,0,0" HorizontalAlignment="Left" Padding="5" VerticalAlignment="Top" Click="EditButton_Click" Style="{DynamicResource MaterialDesignOutlinedButton}">
+                <Button x:Name="EditButton" IsDefault="True" Margin="10,0,0,0" HorizontalAlignment="Left" Padding="5" VerticalAlignment="Top" Click="EditButton_Click" Style="{DynamicResource MaterialDesignOutlinedButton}">
                     <Grid>
                         <StackPanel x:Name="editStackpanel" Orientation="Horizontal">
                             <materialDesign:PackIcon Margin="0,0,5,0" Kind="Edit" VerticalAlignment="Center"/>
@@ -92,7 +86,7 @@
             </StackPanel>
 
         </Grid>
-        <DockPanel Grid.Row="2" VerticalAlignment="Bottom">
+        <DockPanel Grid.Row="1" VerticalAlignment="Bottom">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="13,5,13,13">
                 <Label x:Name="offLineLabel" VerticalContentAlignment="Center" Content="Off-line mode" d:Visibility="Visible" Visibility="Collapsed" FontWeight="Bold" Foreground="#FFF90000"/>
                 <DockPanel x:Name="pendingChangesPanel" Visibility="Collapsed" d:Visibility="Visible" LastChildFill="False">

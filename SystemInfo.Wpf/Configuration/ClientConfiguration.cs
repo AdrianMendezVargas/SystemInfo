@@ -3,11 +3,18 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using SystemInfo.Wpf.Services;
 
 namespace SystemInfo.Wpf.Configuration {
     public class ClientConfiguration {
+        private readonly PreferencesService _preferencesService;
+
+        public ClientConfiguration() {
+            _preferencesService = OfflineBussinessServicesContainer.PreferencesService;
+        }
         public string this[string name] {
             get => BaseAdress + ConfigurationManager.AppSettings[name];
             set => ConfigurationManager.AppSettings[name] = value;
@@ -17,7 +24,13 @@ namespace SystemInfo.Wpf.Configuration {
         public HttpClient GetHttpClient() {
             HttpClientHandler clientHandler = new HttpClientHandler();
             clientHandler.ServerCertificateCustomValidationCallback = (sender , cert , chain , sslPolicyErrors) => { return true; };
-            return new HttpClient(clientHandler);
+            var client = new HttpClient(clientHandler);
+
+            string token = ConfigurationManager.AppSettings["Api:Token"];  //This is set dynamically
+            if (!string.IsNullOrWhiteSpace(token)) {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer" , token);
+            }
+            return client;
         }
 
     }

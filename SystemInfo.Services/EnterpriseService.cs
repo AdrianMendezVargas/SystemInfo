@@ -80,7 +80,7 @@ namespace SystemInfo.Services {
 
             var enterprise = await _unit.EnterpriseRepository.FindByRncAsync(enterpriseRnc);
             if (enterprise == null) {
-                return Error("No existe una empresa con este RNC" , new Enterprise() , ServiceResult.InvalidData);
+                return Error("No existe una empresa con este RNC" , new Enterprise() , ServiceResult.NotFound);
             }
 
             return Success("Empresa encontrada" , enterprise);
