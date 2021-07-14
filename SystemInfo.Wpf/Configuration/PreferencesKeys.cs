@@ -8,5 +8,7 @@ namespace SystemInfo.Wpf.Configuration {
     public struct PreferencesKeys {
         public static string Token = "Token";
         public static string TokenExpiration = "TokenExpiration";
+        public static string LastEnterpriseRnc = "LastEnterpriseRnc";
+
     }
 }

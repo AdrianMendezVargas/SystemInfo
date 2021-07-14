@@ -4,8 +4,9 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net5.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon />
+    <ApplicationIcon>system_information2.ico</ApplicationIcon>
     <Win32Resource />
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,6 +34,7 @@
     <ProjectReference Include="..\SystemInfo.Models\SystemInfo.Models.csproj" />
     <ProjectReference Include="..\SystemInfo.Repository\SystemInfo.Repository.csproj" />
     <ProjectReference Include="..\SystemInfo.Services\SystemInfo.Services.csproj" />
+    <ProjectReference Include="..\SystemInfo.Shared\SystemInfo.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

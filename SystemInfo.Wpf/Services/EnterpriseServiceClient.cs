@@ -25,7 +25,7 @@ namespace SystemInfo.Wpf.Services {
         public EnterpriseServiceClient() {
             offlineEnterpriseService = OfflineBussinessServicesContainer.EnterpriseService;
             _configuration = new ClientConfiguration();
-            httpClient = _configuration.GetHttpClient();
+            httpClient = _configuration.GetHttpClient().Result;
         }
 
         public async Task<EmptyOperationResponse> SaveEnterpriseAsync(CreateEnterpriseRequest enterpriseRequest) {

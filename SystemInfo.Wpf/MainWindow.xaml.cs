@@ -51,31 +51,37 @@ namespace SystemInfo.Wpf {
         private async void InitAsyncTasks() {
             await SetTokenAsync();
             await SetConnectionStatusAsync();
+            SetLastestUsedEnterprise();
             await CheckPendingChangesAsync();
+        }
+
+        private async void SetLastestUsedEnterprise() {
+            PreferencesKeyValues lastEnterpriseRnc = await _preferencesService.Get(PreferencesKeys.LastEnterpriseRnc);
+            SystemSpecsRequest.EnterpriseRNC = lastEnterpriseRnc?.Value;
+            if (!string.IsNullOrWhiteSpace(SystemSpecsRequest.EnterpriseRNC)) {
+                await SetEnterprise(usingLastRnc: true);
+            }
         }
 
         private void InitServices() {
             _authenticationClient = new AuthenticationServiceClient();
             _connectionClient = new ConnectionServiceClient();
             _preferencesService = OfflineBussinessServicesContainer.PreferencesService;
-            
+
             _specsClient = new SystemSpecsServiceClient();
             _enterpriseClient = new EnterpriseServiceClient();
         }
 
         public async Task<bool> SetTokenAsync() {
+            const int requestMinuteBefore = 1;  //Minutes before the token expires
+
             string exprirationDateString = (await _preferencesService.Get(PreferencesKeys.TokenExpiration))?.Value;
             if (!string.IsNullOrWhiteSpace(exprirationDateString)) {
 
                 DateTime expirationDate = Convert.ToDateTime(exprirationDateString);
 
-                if (expirationDate > DateTime.UtcNow) {  //There is not need to request a new token
-                    bool tokenReady = await UseLocalToken(expirationDate);
-                    if (tokenReady) {
-                        return tokenReady;
-                    } else {
-                        return await RequestNewToken();
-                    }
+                if (expirationDate > DateTime.UtcNow.AddMinutes(requestMinuteBefore)) {  //There is not need to request a new token
+                    return true;
                 }
             }
 
@@ -83,19 +89,13 @@ namespace SystemInfo.Wpf {
         }
 
         private async Task<bool> RequestNewToken() {
-            await SetConnectionStatusAsync();
-            var result = await _authenticationClient.RequestToken();
-            if (result.OperationResult == ServiceResult.Success) {
-                return await SaveTokenAndUpdateServices(result.Record);
-
+            if (IsServerOnline) {
+                var result = await _authenticationClient.RequestToken();
+                if (result.OperationResult == ServiceResult.Success) {
+                    return await SaveTokenAndUpdateServices(result.Record);
+                }
             }
             return false;
-        }
-
-        private async Task<bool> UseLocalToken(DateTime expirationDate) {
-            string token = (await _preferencesService.Get(PreferencesKeys.Token))?.Value;
-            ConfigurationManager.AppSettings["Api:Token"] = token ?? "";
-            return token != null;
         }
 
         private async Task<bool> SaveTokenAndUpdateServices(TokenResponse tokenResponse) {
@@ -110,7 +110,6 @@ namespace SystemInfo.Wpf {
                 Value = tokenResponse.ExpirationDate.ToString("G")
             });
 
-            ConfigurationManager.AppSettings["Api:Token"] = tokenResponse.Token;
             InitServices();
             return tokenSaved && tokenExpiratioinSaved;
         }
@@ -132,6 +131,7 @@ namespace SystemInfo.Wpf {
             syncButton.Visibility = IsServerOnline
                 ? Visibility.Visible
                 : Visibility.Collapsed;
+
         }
 
         private async Task SetConnectionStatusAsync() {
@@ -213,64 +213,86 @@ namespace SystemInfo.Wpf {
         }
 
         private async void EditButton_Click(object sender , RoutedEventArgs e) {
-            await VerifyAndSetEnterprise();
+            try {
+                EditButton.IsEnabled = false;
+                await VerifyAndSetEnterprise();
+            } finally {
+                EditButton.IsEnabled = true;
+            }
         }
 
         private async Task VerifyAndSetEnterprise() {
-            if (_isEditingEnterprise) {
-                if (!SystemSpecsRequest.EnterpriseRNC.IsRncValid()) {
-                    MessageBox.Show("RNC invalido.");
-                    return;
-                }
-
-                EditButton.IsEnabled = false;
-                await SetTokenAsync();
-                var result = await _enterpriseClient.GetEnterpriseAsync(SystemSpecsRequest.EnterpriseRNC);
-                EditButton.IsEnabled = true;
-
-                if (result.OperationResult == ServiceResult.Success) {
-                    EnterpriseNameTextBox.Text = result.Record?.Name;
-                    SetEditingEnterprise(false);
-                    return;
-                }
-
-                if (result.OperationResult == ServiceResult.Unauthorized) {
-                    EnterpriseNameTextBox.Text = string.Empty;
-                    EnterpriseRncTextBox.Text = string.Empty;
-                    SetEditingEnterprise(false);
-                    MessageBox.Show(result.Message);
-                    return;
-                }
-
-                if (result.OperationResult == ServiceResult.NotFound) {
-                    var answer = MessageBox.Show("Esta empresa no existe, desea crearla?" , "Error" , MessageBoxButton.YesNo);
-                    if (answer == MessageBoxResult.No) {
-                        EnterpriseNameTextBox.Text = string.Empty;
-                        return;
-                    }
-
-                    if (!isValidEnterprise()) {
-                        MessageBox.Show("Introduzca un nombre para la empresa y vuelva a intentarlo.");
-                        return;
-                    }
-                    var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(new CreateEnterpriseRequest() {
-                        Name = EnterpriseNameTextBox.Text.Trim() ,
-                        RNC = SystemSpecsRequest.EnterpriseRNC
-                    });
-
-                    if (enterpriseResult.OperationResult == ServiceResult.Success) {
-                        SetEditingEnterprise(false);
-                    }
-
-                    MessageBox.Show(enterpriseResult.Message);
-                    return;
-                }
-
-                MessageBox.Show(result.Message);
+            if (_isEditingEnterprise) {//Accept was clicked
+                await SetEnterprise();
 
             } else {
                 SetEditingEnterprise(true);
+                EnterpriseRncTextBox.Focus();
             }
+        }
+
+        private async Task SetEnterprise(bool usingLastRnc = false) {
+            if (!SystemSpecsRequest.EnterpriseRNC.IsRncValid()) {
+                MessageBox.Show("RNC invalido.");
+                return;
+            }
+
+            await SetTokenAsync();
+            var result = await _enterpriseClient.GetEnterpriseAsync(SystemSpecsRequest.EnterpriseRNC);
+
+            if (result.OperationResult == ServiceResult.Success) {
+                EnterpriseNameTextBox.Text = result.Record?.Name;
+                EnterpriseRncTextBox.Text = result.Record?.RNC;
+                SetEditingEnterprise(false);
+                SaveAsLastEnterpriseUsed(result.Record);
+                return;
+            }
+
+            if (result.OperationResult == ServiceResult.Unauthorized) {
+                EnterpriseNameTextBox.Text = string.Empty;
+                EnterpriseRncTextBox.Text = string.Empty;
+                SetEditingEnterprise(false);
+                MessageBox.Show(result.Message);
+                return;
+            }
+
+            if (result.OperationResult == ServiceResult.NotFound && usingLastRnc) {
+                return;
+            }
+
+            if (result.OperationResult == ServiceResult.NotFound) {
+                var answer = MessageBox.Show("Esta empresa no existe, desea crearla?" , "Error" , MessageBoxButton.YesNo);
+                if (answer == MessageBoxResult.No) {
+                    EnterpriseNameTextBox.Text = string.Empty;
+                    return;
+                }
+
+                if (!isValidEnterprise()) {
+                    MessageBox.Show("Introduzca un nombre para la empresa y vuelva a intentarlo.");
+                    EnterpriseNameTextBox.Focus();
+                    return;
+                }
+                var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(new CreateEnterpriseRequest() {
+                    Name = EnterpriseNameTextBox.Text.Trim() ,
+                    RNC = SystemSpecsRequest.EnterpriseRNC
+                });
+
+                if (enterpriseResult.OperationResult == ServiceResult.Success) {
+                    SetEditingEnterprise(false);
+                }
+
+                MessageBox.Show(enterpriseResult.Message);
+                return;
+            }
+
+            MessageBox.Show(result.Message);
+        }
+
+        private async void SaveAsLastEnterpriseUsed(EnterpriseDetails record) {
+            bool tokenSaved = await _preferencesService.Save(new PreferencesKeyValues() {
+                Key = PreferencesKeys.LastEnterpriseRnc ,
+                Value = record.RNC
+            });
         }
 
         private bool isValidEnterprise() {
@@ -290,10 +312,14 @@ namespace SystemInfo.Wpf {
 
         private async void refreshButton_Click(object sender , RoutedEventArgs e) {
             refreshButton.IsEnabled = false;
-            GetSystemSpecsAsync();
-            await CheckPendingChangesAsync();
-            await SetConnectionStatusAsync();
-            refreshButton.IsEnabled = true;
+            try {
+                GetSystemSpecsAsync();
+                await CheckPendingChangesAsync();
+                await SetConnectionStatusAsync();
+                await SetTokenAsync();
+            } finally {
+                refreshButton.IsEnabled = true;
+            }
 
         }
 
@@ -304,64 +330,77 @@ namespace SystemInfo.Wpf {
             }
 
             saveButton.IsEnabled = false;
-            await SetTokenAsync();
-            var result = await _specsClient.SaveSystemSpecsAsync(SystemSpecsRequest);
-            saveButton.IsEnabled = true;
-            MessageBox.Show(result.Message);
+            try {
+                await SetTokenAsync();
+                var result = await _specsClient.SaveSystemSpecsAsync(SystemSpecsRequest);
+                MessageBox.Show(result.Message);
+            } finally {
+                saveButton.IsEnabled = true;
+            }
+
         }
 
         private async void syncButton_Click(object sender , RoutedEventArgs e) {
             try {
                 syncButton.IsEnabled = false;
                 await SyncChangesAsync();
-                syncButton.IsEnabled = true;
                 await CheckPendingChangesAsync();
                 if (!HasPendingChanges) {
                     MessageBox.Show("Los cambios fueron sincronizados");
                 } else {
                     MessageBox.Show("Algunos cambios no fueron sincronizados. \nRevise la conexión a Internet y la contraseña del api.");
                 }
-            } catch (Exception) {
+            } finally {
                 syncButton.IsEnabled = true;
             }
         }
 
         private async Task SyncChangesAsync() {
             var readyToRemoveEnterprises = new List<Enterprise>();
+            var readyToRemoveSpecs = new List<SystemSpecs>();
+
 
             var offlineEnterpriseService = OfflineBussinessServicesContainer.EnterpriseService;
             var offlineSystemSpecsService = OfflineBussinessServicesContainer.SystemSpecsService;
 
             var offlineDbContext = OfflineBussinessServicesContainer.GetOfflineDbContext();
-
             var pendingEnterprises = await offlineDbContext.Enterprises
                 .IgnoreAutoIncludes()
                 .Include(e => e.SystemSpecs).ThenInclude(s => s.HardDisks)
                 .ToListAsync();
 
+            await SetTokenAsync();
+
             foreach (var enterprise in pendingEnterprises) {
                 var enterpriseResult = await _enterpriseClient.SaveEnterpriseAsync(enterprise.ToCreateEntepriseRequest());
-                if (enterpriseResult.OperationResult == ServiceResult.InvalidData
-                    || enterpriseResult.OperationResult == ServiceResult.Unknown) {
+                if (enterpriseResult.OperationResult == ServiceResult.Success
+                    || enterpriseResult.OperationResult == ServiceResult.AlreadyExist) {
+
+                    readyToRemoveEnterprises.Add(enterprise);
+
+                } else {
                     //TODO:Save in invalidEnterprises Table
                     continue;
                 }
 
                 foreach (var systemSpec in enterprise.SystemSpecs) {
                     var systemSpecsResult = await _specsClient.SaveSystemSpecsAsync(systemSpec.ToCreateSystemSpecRequest());
-                    if (enterpriseResult.OperationResult == ServiceResult.InvalidData
-                    || enterpriseResult.OperationResult == ServiceResult.Unknown) {
-                        //TODO:Save in invalidSystemSpecs Table
+                    if (systemSpecsResult.OperationResult == ServiceResult.Success
+                    || systemSpecsResult.OperationResult == ServiceResult.AlreadyExist) {
+
+                        readyToRemoveSpecs.Add(systemSpec);
+
+                    } else {
+                        //TODO:Save in invalidSpecs Table
                         continue;
                     }
                 }
 
-                if (enterpriseResult.OperationResult == ServiceResult.Success) {
-                    readyToRemoveEnterprises.Add(enterprise);
-                }
+
             }
 
             try {
+                offlineDbContext.SystemSpecs.RemoveRange(readyToRemoveSpecs);
                 offlineDbContext.Enterprises.RemoveRange(readyToRemoveEnterprises);
                 await offlineDbContext.SaveChangesAsync();
             } catch (Exception) {

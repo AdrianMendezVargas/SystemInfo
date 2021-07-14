@@ -20,7 +20,7 @@ namespace SystemInfo.Wpf.Services {
         public SystemSpecsServiceClient() {
             offlineSpecService = OfflineBussinessServicesContainer.SystemSpecsService;
             _configuration = new ClientConfiguration();
-            httpClient = _configuration.GetHttpClient();
+            httpClient = _configuration.GetHttpClient().Result;
         }
 
         public async Task<EmptyOperationResponse> SaveSystemSpecsAsync(CreateSystemSpecsRequest specsRequest) {

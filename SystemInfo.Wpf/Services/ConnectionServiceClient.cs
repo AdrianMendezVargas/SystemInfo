@@ -9,7 +9,7 @@ namespace SystemInfo.Wpf.Services {
 
         public ConnectionServiceClient() {
             _configuration = new ClientConfiguration();
-            _httpClient = _configuration.GetHttpClient();
+            _httpClient = _configuration.GetHttpClient().Result;
         }
 
         public async Task<bool> IsConnectionEstablished() {

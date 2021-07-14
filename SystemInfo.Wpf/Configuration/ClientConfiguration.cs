@@ -21,12 +21,12 @@ namespace SystemInfo.Wpf.Configuration {
         }
         public string BaseAdress => ConfigurationManager.AppSettings["Api:BaseAdress"];
 
-        public HttpClient GetHttpClient() {
+        public async Task<HttpClient> GetHttpClient() {
             HttpClientHandler clientHandler = new HttpClientHandler();
             clientHandler.ServerCertificateCustomValidationCallback = (sender , cert , chain , sslPolicyErrors) => { return true; };
             var client = new HttpClient(clientHandler);
 
-            string token = ConfigurationManager.AppSettings["Api:Token"];  //This is set dynamically
+            string token = (await _preferencesService.Get(PreferencesKeys.Token))?.Value;
             if (!string.IsNullOrWhiteSpace(token)) {
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer" , token);
             }

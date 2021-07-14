@@ -21,7 +21,7 @@ namespace SystemInfo.Wpf.Services {
 
         public AuthenticationServiceClient() {
             _ClientConfiguration = new ClientConfiguration();
-            httpClient = _ClientConfiguration.GetHttpClient();
+            httpClient = _ClientConfiguration.GetHttpClient().Result;
         }
 
         public async Task<OperationResponse<TokenResponse>> RequestToken() {
